@@ -1,0 +1,9 @@
+extends layout
+
+block content
+	h2 ファイルアップロード
+	form(enctype="multipart/form-data", action="/manager/csv/register", method="post")
+		input(type="file", name="csv")
+		input(type="submit")
+	form(action="/manager/csv/delete_all", method="post")
+		input(type="submit", value="delete_all!")

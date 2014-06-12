@@ -1,0 +1,14 @@
+extends layout
+
+block content
+	h2 プレビュー
+	table#csv-preview
+		thead
+			tr
+				each header in table_headers
+					th= header
+		tbody
+			each row in table_data
+				tr
+					each col, label in row
+						td= col

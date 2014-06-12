@@ -1,0 +1,162 @@
+extends layout_map
+
+block content
+	div#map-page(data-role="page", data-theme="a")
+		//- ヘッダ
+		div#header(data-role="header", data-position="fixed")
+			h1#header-title
+			div.ui-mini.ui-btn-right(data-role="controlgroup", data-type="horizontal")
+				if authorized
+					span#user-name.ui-btn.ui-btn-icon-left.ui-icon-user.ui-nodisc-icon.ui-alt-icon.ui-state-disabled(data-ajax="false")= user.username
+					a#logout-button.ui-btn.ui-btn-icon-left.ui-icon-minus(href="/admin/logout", data-ajax="false") ログアウト
+				else
+					a#login-button.ui-btn.ui-btn-icon-left.ui-icon-lock(href="/admin/login", data-ajax="false") ログイン
+
+		//- コンテンツ
+		div#content(class="ui-content")
+			//- リストとコントロール
+			div#map-controls(data-id="menu", data-role="controlgroup")
+				div#data-filter
+					select#filter-selector(name="filter-selector")
+						option(value="null") すべて
+				ul#data-list(data-role="listview")
+				div#data-sorter.ui-grid-a(data-theme="c")
+					//- div.ui-block-a
+					//- 	label.select.ui-title(for="sort-selector") ソート
+					//- div.ui-block-b
+					//- 	select#sort-selector(name="sort-selector")
+					//- 		option(value="DESC") 降順
+					//- 		option(value="ASC") 昇順
+			//- マップ
+			div#map-main(data-id="main")
+				div#map-canvas
+				//- 位置修正コントロール
+				//- div#location-edit-control(style="display:none;position:absolute;left:50%;bottom:10%;")
+				//- 	button#le-ok(data-role="button", data-icon="check", data-theme="b", data-inline="true") 決定
+				//- 	button#le-cancel(data-role="button", data-icon="delete", data-theme="b", data-inline="true") キャンセル
+			//- フォーム
+			//- ログインポップアップ
+			//- div#login-form(data-role="popup", data-overlay-theme="a")
+			//- 	div(data-role="header")
+			//- 		h1 ログイン
+			//- 	div(data-role="content")
+			//- 		form(action="", method="post")
+			//- 			div(data-role="fieldcontain")
+			//- 				label(for="login") ユーザID
+			//- 				input#login(type="text", name="login")
+			//- 			div(data-role="fieldcontain")
+			//- 				label(for="password") パスワード
+			//- 				input#password(type="password", name="password")
+			//- 			input#login-submit(type="submit", value="ログイン")
+				//- div.ui-bar(data-role="footer")
+				//- 	a.btn.cancel-button(data-role="button", data-icon="back") キャンセル
+				//- 	a.btn.delete-button(data-role="button", data-icon="delete", data-theme="e") 削除
+			//- 削除確認ポップアップ
+			div#deletion-confirm(data-role="popup", data-overlay-theme="a", style="width:400px")
+				div(data-role="header", data-theme="e")
+					h1 データの削除
+				div(data-role="content", data-theme="e")
+					p 本当に削除してもよろしいですか？
+				div.ui-bar(data-role="footer")
+					button.cancel-button(data-icon="back") キャンセル
+					button.delete-submit(data-icon="delete", data-theme="e") 削除
+
+		//- div#info-panel(data-role="panel", data-display="overlay", data-dismissible="false")
+	//- フォームテンプレート
+	script#response-form-inner(type="text/template").
+		<div data-role="header" data-theme="a">
+			<h1 class="data-subject"><%- subject %></h1>
+			<p class="ui-li-desc"><span class="data-address2"><%- address2 %></span> | <span class="data-datetime"><%- datetime %></span></p>
+		</div>
+		<div data-role="content" class="response-form-content">
+			<form class="ui-grid-a">
+				<div class="ui-block-a">
+					<div class="info-window-image"><img class="data-image" src="<%- InfoMap.config.imgDir + image %>"></div>
+				</div>
+				<div class="ui-block-b">
+					<label for="input-subject-<%- id %>">件名</label>
+					<input type="text" id="input-subject-<%- id %>" name="subject" data-mini="true" class="response-form-input" value="<%- subject %>">
+					<label for="input-comment-<%- id %>">本文</label>
+					<textarea id="input-comment-<%- id %>" name="comment" data-mini="true" class="response-form-input"><%- comment %></textarea>
+					<hr/>
+					<label for="input-response-<%- id %>">コメント</label>
+					<textarea id="input-response-<%- id %>" name="response" data-mini="true" class="response-form-input"><%- response %></textarea>
+					<label for="input-status-<%- id %>">分類</label>
+					<select id="input-status-<%- id %>" name="status" data-mini="true" class="response-form-input">
+						<% InfoMap.data.status.each(function(s){ %>
+						<option id="status-<%- s.get('value') %>" value="<%- s.get('value') %>"<% if(status==s.get('value')) { %> selected="selected"<% } %>>
+						<%- s.get('label') %></option>
+						<% }) %>
+					</select>
+				</div>
+			</form>
+		</div>
+		<div id="response-form-footer" data-role="footer" class="ui-bar">
+			<a data-role="button" data-icon="back" class="cancel-button">キャンセル</a>
+			<a data-role="button" data-icon="check" data-theme="b" class="submit-button">更新</a>
+		</div>
+
+	//- リストアイテムテンプレート
+	script#point-list-item(type="text/template")
+		|<%
+		|	console.log(created_at)
+		|	var dt
+		|	, address = custom_fields.address || (custom_fields.coordinates[0][1] + ", " + custom_fields.coordinates[0][0])
+		| 	, st = custom_fields.status || 1
+		| 	, stlabels = {1: "未対応", 2: "対応中", 3: "対応済"}
+		|	created_at.replace(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/, function(str, y, mo, d, h, mi, s){
+		|		dt = new Date(Date.UTC(y, mo - 1, d, h, mi, s))
+		|	})
+		|	//var d = new Date(created_at.replace("-", "/").replace("T", " ").split("+")[0] + "Z")
+		|%>
+		|<a href="#" class="point-list-link ui-link-inherit">
+		|	<h3><span class="list-index badge"></span><%- dt.getFullYear() %>年<%- dt.getMonth() + 1 %>月<%- dt.getDate() %>日 <%- dt.getHours() %>時<%- dt.getMinutes() %>分</h3>
+		|	<p class="ui-li-desc"><%- address %></p>
+		|	<p class="ui-li-desc">▶ <%- place.name %></p>
+		if authorized
+			|	<div class="admin-menu">
+			|		<fieldset data-role="controlgroup" data-type="horizontal" style="text-align:center">
+			| 		<% _(stlabels).each(function(label, key) { %>
+			| 			<input type="radio" name="status-<%- id %>" id="status-<%- id %>-<%- key %>" value="<%- key %>" class="status-radio status-<%- key %>"<% if(key == st) { %> checked<% } %>>
+			| 			<label for="status-<%- id %>-<%- key %>"><%- label %></label>
+			| 		<% }) %>
+			| 		</fieldset>
+			|		<hr>
+			| 		<button id="delete-<%- id %>" class="delete-button" data-icon="delete" data-theme="b">削除する</button>
+			|	</div>
+		|</a>
+
+	//- マップのインフォウィンドウテンプレート
+	script#info-panel-content(type="text/template")
+		| <%
+		|	var dt
+		| 	, latlng = custom_fields.coordinates[0][1] + "," + custom_fields.coordinates[0][0]
+		| 	, depLatlng = place.latitude + "," + place.longitude
+		| 	, address = custom_fields.address || latlng
+		| 	, st = custom_fields.status || 1
+		| 	, stlabels = {1: "未対応", 2: "対応中", 3: "対応済"}
+		|	created_at.replace(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/, function(str, y, mo, d, h, mi, s){
+		|		dt = new Date(Date.UTC(y, mo - 1, d, h, mi, s))
+		|	})
+		| %>
+		| <h3 class="ui-li-heading"><%- dt.getFullYear() %>年<%- dt.getMonth() + 1 %>月<%- dt.getDate() %>日 <%- dt.getHours() %>時<%- dt.getMinutes() %>分</h3>
+		| <p class="ui-li-desc ui-body ui-body-a ui-corner-all">
+		|	<a href="https://maps.google.com/maps?ie=UTF8&f=d&dirflg=d&saddr=<%- depLatlng %>&daddr=<%- latlng %>&date=2013%2F07%2F30&time=10%3A17&ttype=dep" target="_blank" class="ui-btn ui-shadow ui-corner-all ui-icon-location ui-btn-icon-notext">ルート検索</a>
+		|	<%- address %>
+		|	<% if(typeof details !== "undefined") { %>
+		|		<hr>
+		|		<p><%- details %></p>
+		|	<% } %>
+		| </p>
+		| <p class="ui-li-desc down-arrow">▼</p>
+		| <p class="ui-li-desc ui-body ui-body-a ui-corner-all"><%- place.name %></p>
+		if authorized
+			|		<fieldset data-role="controlgroup" data-type="horizontal" style="text-align:center">
+			| 		<% _(stlabels).each(function(label, key) { %>
+			| 			<input type="radio" name="status-<%- id %>" id="status-<%- id %>-<%- key %>" value="<%- key %>" class="status-radio status-<%- key %>"<% if(key == st) { %> checked<% } %>>
+			| 			<label for="status-<%- id %>-<%- key %>"><%- label %></label>
+			| 		<% }) %>
+			| 		</fieldset>
+			if user.role == "manager"
+				|		<hr style="border:1px solid #f5f5f5;margin:1em 0">
+				| 		<button id="delete-<%- id %>" class="delete-button" data-icon="delete" data-theme="b">削除する</button>

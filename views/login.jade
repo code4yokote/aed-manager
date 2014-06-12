@@ -1,0 +1,15 @@
+extends layout_map
+
+block content
+	div#login-page(data-role="page")
+		div#header(data-role="header", data-position="fixed")
+			h1#header-title name
+		div#content(data-role="content")
+			form(action="authorize", method="post", data-ajax="false")
+				div(data-role="fieldcontain")
+					label(for="login") ユーザID
+					input#login(type="text", name="login")
+				div(data-role="fieldcontain")
+					label(for="password") パスワード
+					input#password(type="password", name="password")
+				input#login-button(type="submit", value="ログイン")
